@@ -23,6 +23,8 @@
 
 #include "behaviortree_ros2/ros_node_params.hpp"
 
+using namespace std::chrono_literals;
+
 namespace BT
 {
 
@@ -226,7 +228,7 @@ inline RosServiceNode<T>::RosServiceNode(const std::string& instance_name,
                                          const RosNodeParams& params)
   : BT::ActionNodeBase(instance_name, conf)
   , node_(params.nh)
-  , service_timeout_(params.server_timeout)
+  , service_timeout_(std::chrono::duration(10s))  // )(params.server_timeout)
   , wait_for_service_timeout_(params.wait_for_server_timeout)
 {
   // check port remapping
@@ -305,6 +307,8 @@ inline void RosServiceNode<T>::setServiceName(const std::string& service_name)
 template <class T>
 inline NodeStatus RosServiceNode<T>::tick()
 {
+  // std::cerr << "Ticking RosServiceNode" << std::endl;
+
   if(!rclcpp::ok())
   {
     halt();
@@ -353,22 +357,26 @@ inline NodeStatus RosServiceNode<T>::tick()
 
     if(!setRequest(request))
     {
+      // std::cerr << "setRequest() failed" << std::endl;
       return CheckStatus(onFailure(INVALID_REQUEST));
     }
 
     // Check if server is ready
     if(!srv_instance_->service_client->service_is_ready())
     {
+      // std::cerr << "Unreachable service" << std::endl;
       return onFailure(SERVICE_UNREACHABLE);
     }
 
     future_response_ = srv_instance_->service_client->async_send_request(request).share();
     time_request_sent_ = now();
 
-    return NodeStatus::RUNNING;
+    // std::cerr << "RosServerNode is coming out of IDLE" << std::endl;
+//    return NodeStatus::RUNNING;
   }
 
-  if(status() == NodeStatus::RUNNING)
+RUN_AGAIN:
+  while (status() == NodeStatus::RUNNING)
   {
     srv_instance_->callback_executor.spin_some();
 
@@ -386,11 +394,15 @@ inline NodeStatus RosServiceNode<T>::tick()
       {
         if((now() - time_request_sent_) > timeout)
         {
-          return CheckStatus(onFailure(SERVICE_TIMEOUT));
+          // std::cerr << "Timeout error" << std::endl;
+          // return CheckStatus(onFailure(SERVICE_TIMEOUT));
+          goto RUN_AGAIN;
         }
         else
         {
-          return NodeStatus::RUNNING;
+          // std::cerr << "Waiting for response" << std::endl;
+          // return NodeStatus::RUNNING;
+          goto RUN_AGAIN;
         }
       }
       else
@@ -407,6 +419,7 @@ inline NodeStatus RosServiceNode<T>::tick()
     }
 
     // SECOND case: response received
+    // std::cerr << "Final checking status" << std::endl;
     return CheckStatus(onResponseReceived(response_));
   }
   return NodeStatus::RUNNING;
