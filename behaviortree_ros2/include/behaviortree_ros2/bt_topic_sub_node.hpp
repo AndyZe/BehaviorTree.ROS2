@@ -292,19 +292,19 @@ inline NodeStatus RosTopicSubNode<T>::tick()
   // First, check if the subscriber_ is valid and that the name of the
   // topic_name in the port didn't change.
   // otherwise, create a new subscriber
-  std::string topic_name;
-  getInput("topic_name", topic_name);
+  // std::string topic_name;
+  // getInput("topic_name", topic_name);
 
-  if(!topic_name.empty() && topic_name != "__default__placeholder__" &&
-     topic_name != topic_name_)
-  {
-    sub_instance_.reset();
-  }
+  // if(!topic_name.empty() && topic_name != "__default__placeholder__" &&
+  //    topic_name != topic_name_)
+  // {
+  //   sub_instance_.reset();
+  // }
 
-  if(!sub_instance_)
-  {
-    createSubscriber(topic_name);
-  }
+  // if(!sub_instance_)
+  // {
+  //   createSubscriber(topic_name);
+  // }
 
   auto CheckStatus = [](NodeStatus status) {
     if(!isStatusCompleted(status))
